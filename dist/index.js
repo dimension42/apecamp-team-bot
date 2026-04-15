@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const discord_js_1 = require("discord.js");
 const guildMemberAdd_1 = require("./events/guildMemberAdd");
 const createrooms_1 = require("./commands/createrooms");
+const syncmembers_1 = require("./commands/syncmembers");
 console.log('🔍 ENV CHECK:');
 console.log('  DISCORD_BOT_TOKEN:', process.env.DISCORD_BOT_TOKEN ? '✅ set' : '❌ missing');
 console.log('  DISCORD_CLIENT_ID:', process.env.DISCORD_CLIENT_ID ? '✅ set' : '❌ missing');
@@ -30,6 +31,9 @@ client.on(discord_js_1.Events.InteractionCreate, async (interaction) => {
         return;
     if (interaction.commandName === 'createrooms') {
         await (0, createrooms_1.execute)(interaction);
+    }
+    else if (interaction.commandName === 'syncmembers') {
+        await (0, syncmembers_1.execute)(interaction);
     }
 });
 client.login(token);
