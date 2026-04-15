@@ -1,0 +1,19 @@
+{
+  "name": "apecamp-team-bot",
+  "version": "1.0.0",
+  "description": "APE CAMP 2026 Discord UID collection and team room assignment bot",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "deploy-commands": "node dist/deploy-commands.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.47.2",
+    "discord.js": "^14.16.3",
+    "typescript": "^5.7.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2"
+  }
+}
