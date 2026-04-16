@@ -1,11 +1,23 @@
-import { Client, GatewayIntentBits, Events, Interaction } from 'discord.js'
+import { Client, GatewayIntentBits, Events, Interaction, TextChannel } from 'discord.js'
 import { execute as executeCreateRooms } from './commands/createrooms'
+import { executeSummary } from './commands/summary'
+import {
+  onMessage,
+  checkSummaryTrigger,
+  checkReminderTrigger,
+  fetchMessagesSince,
+  saveSummaryCheckpoint,
+  saveReminderCheckpoint,
+  getState,
+} from './services/channelMonitor'
+import { summarizeMessages } from './services/openai'
 
 console.log('🔍 ENV CHECK:')
 console.log('  DISCORD_BOT_TOKEN:', process.env.DISCORD_BOT_TOKEN ? '✅ set' : '❌ missing')
 console.log('  DISCORD_CLIENT_ID:', process.env.DISCORD_CLIENT_ID ? '✅ set' : '❌ missing')
 console.log('  SUPABASE_URL:', process.env.SUPABASE_URL ? '✅ set' : '❌ missing')
 console.log('  SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? '✅ set' : '❌ missing')
+console.log('  OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? '✅ set' : '❌ missing')
 
 const token = process.env.DISCORD_BOT_TOKEN
 if (!token) {
@@ -17,11 +29,50 @@ const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
   ],
 })
 
 client.once(Events.ClientReady, (c) => {
   console.log(`✅ Logged in as ${c.user.tag}`)
+})
+
+// 메시지 수신 → 글자 수 누적 + 트리거 체크
+client.on(Events.MessageCreate, async (message) => {
+  // 봇 메시지 무시
+  if (message.author.bot) return
+
+  // team_channel_summaries에 등록된 채널만 처리
+  const channel = message.channel as TextChannel
+  const charCount = message.content.length
+  if (charCount === 0) return
+
+  await onMessage(channel.id, charCount)
+
+  // 리마인더 체크 (OR 조건)
+  if (await checkReminderTrigger(channel.id)) {
+    await saveReminderCheckpoint(channel.id)
+    await channel.send(
+      '* Type /summary anytime to see a summary of previous conversations.'
+    )
+  }
+
+  // 자동 요약 체크 (AND 조건)
+  if (await checkSummaryTrigger(channel.id)) {
+    const state = await getState(channel.id)
+    const messages = await fetchMessagesSince(channel, state.lastSummaryMessageId)
+
+    if (messages.length > 0) {
+      const summary = await summarizeMessages(messages)
+      const latestFetched = await channel.messages.fetch({ limit: 1 })
+      const latestId = latestFetched.first()?.id
+      if (latestId) {
+        await saveSummaryCheckpoint(channel.id, latestId)
+      }
+      await channel.send(`📋 **Conversation Summary**\n\n${summary}`)
+    }
+  }
 })
 
 // 슬래시 커맨드 처리
@@ -30,6 +81,10 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
 
   if (interaction.commandName === 'createrooms') {
     await executeCreateRooms(interaction)
+  }
+
+  if (interaction.commandName === 'summary' || interaction.commandName === '요약') {
+    await executeSummary(interaction)
   }
 })
 

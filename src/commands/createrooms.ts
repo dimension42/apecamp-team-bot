@@ -97,12 +97,18 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       }
     }
 
-    await guild.channels.create({
+    const newChannel = await guild.channels.create({
       name: channelName,
       type: ChannelType.GuildText,
       parent: category.id,
       permissionOverwrites,
     })
+
+    // 요약봇이 모니터링할 채널로 등록
+    await supabase.from('team_channel_summaries').upsert(
+      { channel_id: newChannel.id },
+      { onConflict: 'channel_id' }
+    )
 
     created++
   }

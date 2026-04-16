@@ -75,12 +75,14 @@ async function execute(interaction) {
                 });
             }
         }
-        await guild.channels.create({
+        const newChannel = await guild.channels.create({
             name: channelName,
             type: discord_js_1.ChannelType.GuildText,
             parent: category.id,
             permissionOverwrites,
         });
+        // 요약봇이 모니터링할 채널로 등록
+        await supabase_1.supabase.from('team_channel_summaries').upsert({ channel_id: newChannel.id }, { onConflict: 'channel_id' });
         created++;
     }
     const unmatched = [...teams.values()]
