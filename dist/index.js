@@ -55,7 +55,7 @@ client.on(discord_js_1.Events.MessageCreate, async (message) => {
     }
     else if (await (0, channelMonitor_1.checkReminderTrigger)(channel.id)) {
         await (0, channelMonitor_1.saveReminderCheckpoint)(channel.id);
-        await channel.send('* Type /summary anytime to see a summary of previous conversations.');
+        await channel.send('* Type /summary (or /요약) anytime to see a summary of previous conversations.');
     }
 });
 // 슬래시 커맨드 처리

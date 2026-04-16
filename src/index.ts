@@ -68,7 +68,7 @@ client.on(Events.MessageCreate, async (message) => {
   } else if (await checkReminderTrigger(channel.id)) {
     await saveReminderCheckpoint(channel.id)
     await channel.send(
-      '* Type /summary anytime to see a summary of previous conversations.'
+      '* Type /summary (or /요약) anytime to see a summary of previous conversations.'
     )
   }
 })
