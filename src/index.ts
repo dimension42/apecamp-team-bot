@@ -1,7 +1,5 @@
 import { Client, GatewayIntentBits, Events, Interaction } from 'discord.js'
-import { handleGuildMemberAdd } from './events/guildMemberAdd'
 import { execute as executeCreateRooms } from './commands/createrooms'
-import { execute as executeSyncMembers } from './commands/syncmembers'
 
 console.log('🔍 ENV CHECK:')
 console.log('  DISCORD_BOT_TOKEN:', process.env.DISCORD_BOT_TOKEN ? '✅ set' : '❌ missing')
@@ -26,17 +24,12 @@ client.once(Events.ClientReady, (c) => {
   console.log(`✅ Logged in as ${c.user.tag}`)
 })
 
-// 서버 입장 시 UID 자동 수집
-client.on(Events.GuildMemberAdd, handleGuildMemberAdd)
-
 // 슬래시 커맨드 처리
 client.on(Events.InteractionCreate, async (interaction: Interaction) => {
   if (!interaction.isChatInputCommand()) return
 
   if (interaction.commandName === 'createrooms') {
     await executeCreateRooms(interaction)
-  } else if (interaction.commandName === 'syncmembers') {
-    await executeSyncMembers(interaction)
   }
 })
 
