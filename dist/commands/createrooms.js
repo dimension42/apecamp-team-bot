@@ -66,6 +66,11 @@ async function execute(interaction) {
                 id: guild.roles.everyone.id,
                 deny: [discord_js_1.PermissionFlagsBits.ViewChannel],
             },
+            // 번역봇 접근 허용
+            {
+                id: '1493800477941563565',
+                allow: [discord_js_1.PermissionFlagsBits.ViewChannel, discord_js_1.PermissionFlagsBits.SendMessages],
+            },
         ];
         for (const member of members) {
             if (member.discordUid) {

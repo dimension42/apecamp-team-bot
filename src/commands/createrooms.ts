@@ -86,6 +86,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         id: guild.roles.everyone.id,
         deny: [PermissionFlagsBits.ViewChannel],
       },
+      // 번역봇 접근 허용
+      {
+        id: '1493800477941563565',
+        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
+      },
     ]
 
     for (const member of members) {
