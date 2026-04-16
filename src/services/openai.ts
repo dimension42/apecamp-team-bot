@@ -31,11 +31,6 @@ Format your response exactly like this (use the exact headers):
 💬 **Overall opinions**
 A concise summary of the main topics discussed and where the group stands overall.
 
-⚠️ **Decisions needed**
-- [ ] decision or action item 1
-- [ ] decision or action item 2
-
-If there are no decisions needed, write "None identified." under that section.
 Keep each section concise and focused on substance, not filler.`,
       },
       {

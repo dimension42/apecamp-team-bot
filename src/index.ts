@@ -50,15 +50,7 @@ client.on(Events.MessageCreate, async (message) => {
 
   await onMessage(channel.id, charCount)
 
-  // 리마인더 체크 (OR 조건)
-  if (await checkReminderTrigger(channel.id)) {
-    await saveReminderCheckpoint(channel.id)
-    await channel.send(
-      '* Type /summary anytime to see a summary of previous conversations.'
-    )
-  }
-
-  // 자동 요약 체크 (AND 조건)
+  // 자동 요약 체크 (AND 조건) — 요약이 트리거되면 리마인더는 건너뜀
   if (await checkSummaryTrigger(channel.id)) {
     const state = await getState(channel.id)
     const messages = await fetchMessagesSince(channel, state.lastSummaryMessageId)
@@ -72,6 +64,12 @@ client.on(Events.MessageCreate, async (message) => {
       }
       await channel.send(`📋 **Conversation Summary**\n\n${summary}`)
     }
+  // 리마인더 체크 (OR 조건) — 요약이 없을 때만
+  } else if (await checkReminderTrigger(channel.id)) {
+    await saveReminderCheckpoint(channel.id)
+    await channel.send(
+      '* Type /summary anytime to see a summary of previous conversations.'
+    )
   }
 })
 
