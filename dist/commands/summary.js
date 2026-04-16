@@ -28,5 +28,7 @@ async function executeSummary(interaction) {
     if (latestId) {
         await (0, channelMonitor_1.saveSummaryCheckpoint)(channel.id, latestId);
     }
-    await interaction.editReply(`📋 **Conversation Summary**\n\n${summary}`);
+    // channel.send()으로 보내야 번역봇이 MessageCreate 이벤트를 잡을 수 있음
+    await interaction.deleteReply();
+    await channel.send(`📋 **Conversation Summary**\n\n${summary}`);
 }
