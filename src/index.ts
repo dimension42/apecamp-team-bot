@@ -1,6 +1,8 @@
 import { Client, GatewayIntentBits, Events, Interaction, TextChannel } from 'discord.js'
 import { execute as executeCreateRooms } from './commands/createrooms'
 import { executeSummary } from './commands/summary'
+import { execute as executeMission, handleMissionModal } from './commands/mission'
+import { restoreTimer } from './services/timer'
 import {
   onMessage,
   checkSummaryTrigger,
@@ -34,16 +36,16 @@ const client = new Client({
   ],
 })
 
-client.once(Events.ClientReady, (c) => {
+client.once(Events.ClientReady, async (c) => {
   console.log(`✅ Logged in as ${c.user.tag}`)
+  // 재시작 시 진행 중인 타이머 복구
+  await restoreTimer(client)
 })
 
 // 메시지 수신 → 글자 수 누적 + 트리거 체크
 client.on(Events.MessageCreate, async (message) => {
-  // 봇 메시지 무시
   if (message.author.bot) return
 
-  // team_channel_summaries에 등록된 채널만 처리
   const channel = message.channel as TextChannel
   const charCount = message.content.length
   if (charCount === 0) return
@@ -59,30 +61,28 @@ client.on(Events.MessageCreate, async (message) => {
       const summary = await summarizeMessages(messages)
       const latestFetched = await channel.messages.fetch({ limit: 1 })
       const latestId = latestFetched.first()?.id
-      if (latestId) {
-        await saveSummaryCheckpoint(channel.id, latestId)
-      }
+      if (latestId) await saveSummaryCheckpoint(channel.id, latestId)
       await channel.send(`📋 **Conversation Summary**\n\n${summary}`)
     }
   // 리마인더 체크 (OR 조건) — 요약이 없을 때만
   } else if (await checkReminderTrigger(channel.id)) {
     await saveReminderCheckpoint(channel.id)
-    await channel.send(
-      '* Type /summary (or /요약) anytime to see a summary of previous conversations.'
-    )
+    await channel.send('* Type /summary (or /요약) anytime to see a summary of previous conversations.')
   }
 })
 
-// 슬래시 커맨드 처리
+// 슬래시 커맨드 + 모달 처리
 client.on(Events.InteractionCreate, async (interaction: Interaction) => {
-  if (!interaction.isChatInputCommand()) return
-
-  if (interaction.commandName === 'createrooms') {
-    await executeCreateRooms(interaction)
+  // 슬래시 커맨드
+  if (interaction.isChatInputCommand()) {
+    if (interaction.commandName === 'createrooms') await executeCreateRooms(interaction)
+    if (interaction.commandName === 'summary' || interaction.commandName === '요약') await executeSummary(interaction)
+    if (interaction.commandName === 'mission') await executeMission(interaction)
   }
 
-  if (interaction.commandName === 'summary' || interaction.commandName === '요약') {
-    await executeSummary(interaction)
+  // 모달 제출
+  if (interaction.isModalSubmit()) {
+    if (interaction.customId === 'missionTimerModal') await handleMissionModal(interaction, client)
   }
 })
 
