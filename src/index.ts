@@ -47,6 +47,9 @@ client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot) return
 
   const channel = message.channel as TextChannel
+  // /createrooms로 생성된 팀 채널(team{N}-day{M})에서만 요약 활성화
+  if (!/^team\d+-day\d+$/i.test(channel.name)) return
+
   const charCount = message.content.length
   if (charCount === 0) return
 

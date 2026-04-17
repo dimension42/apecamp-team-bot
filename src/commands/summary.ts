@@ -18,6 +18,12 @@ export const yoyakData = new SlashCommandBuilder()
 export async function executeSummary(interaction: ChatInputCommandInteraction) {
   const channel = interaction.channel as TextChannel
 
+  // /createrooms로 생성된 팀 채널(team{N}-day{M})에서만 허용
+  if (!/^team\d+-day\d+$/i.test(channel.name)) {
+    await interaction.reply({ content: '❌ 이 명령어는 팀 채널에서만 사용할 수 있습니다.', ephemeral: true })
+    return
+  }
+
   await interaction.deferReply()
 
   const state = await getState(channel.id)
