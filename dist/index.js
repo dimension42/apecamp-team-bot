@@ -35,9 +35,11 @@ client.once(discord_js_1.Events.ClientReady, async (c) => {
 client.on(discord_js_1.Events.MessageCreate, async (message) => {
     if (message.author.bot)
         return;
+    if (!(message.channel instanceof discord_js_1.TextChannel))
+        return;
     const channel = message.channel;
-    // /createrooms로 생성된 팀 채널(team{N}-day{M})에서만 요약 활성화
-    if (!/^team\d+-day\d+$/i.test(channel.name))
+    // /createrooms로 DB에 등록된 팀 채널에서만 요약 활성화
+    if (!(await (0, channelMonitor_1.isRegisteredTeamChannel)(channel.id)))
         return;
     const charCount = message.content.length;
     if (charCount === 0)

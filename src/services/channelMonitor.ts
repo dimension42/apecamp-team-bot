@@ -20,6 +20,16 @@ interface ChannelState {
 
 const states = new Map<string, ChannelState>()
 
+// /createrooms로 등록된 팀 채널인지 DB로 검증 (regex만으로는 우회 가능)
+export async function isRegisteredTeamChannel(channelId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('team_channel_summaries')
+    .select('channel_id')
+    .eq('channel_id', channelId)
+    .single()
+  return !!data
+}
+
 // Load state from Supabase on first message in a channel
 async function initState(channelId: string): Promise<ChannelState> {
   const { data } = await supabase

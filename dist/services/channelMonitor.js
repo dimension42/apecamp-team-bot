@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.isRegisteredTeamChannel = isRegisteredTeamChannel;
 exports.getState = getState;
 exports.onMessage = onMessage;
 exports.checkSummaryTrigger = checkSummaryTrigger;
@@ -16,6 +17,15 @@ const BACKUP_MIN_CHARS = 1000;
 const REMINDER_CHAR_THRESHOLD = 5000;
 const REMINDER_TIME_MS = 15 * 60 * 1000; // 15 min
 const states = new Map();
+// /createrooms로 등록된 팀 채널인지 DB로 검증 (regex만으로는 우회 가능)
+async function isRegisteredTeamChannel(channelId) {
+    const { data } = await supabase_1.supabase
+        .from('team_channel_summaries')
+        .select('channel_id')
+        .eq('channel_id', channelId)
+        .single();
+    return !!data;
+}
 // Load state from Supabase on first message in a channel
 async function initState(channelId) {
     const { data } = await supabase_1.supabase

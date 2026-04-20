@@ -14,8 +14,13 @@ exports.yoyakData = new discord_js_1.SlashCommandBuilder()
 // Shared logic for both /summary and /요약
 async function executeSummary(interaction) {
     const channel = interaction.channel;
-    // /createrooms로 생성된 팀 채널(team{N}-day{M})에서만 허용
-    if (!/^team\d+-day\d+$/i.test(channel.name)) {
+    // 채널이 없거나 TextChannel이 아닌 경우 차단
+    if (!channel || !(channel instanceof discord_js_1.TextChannel)) {
+        await interaction.reply({ content: '❌ 이 명령어는 팀 채널에서만 사용할 수 있습니다.', ephemeral: true });
+        return;
+    }
+    // /createrooms로 DB에 등록된 팀 채널인지 검증 (이름만으로는 우회 가능)
+    if (!(await (0, channelMonitor_1.isRegisteredTeamChannel)(channel.id))) {
         await interaction.reply({ content: '❌ 이 명령어는 팀 채널에서만 사용할 수 있습니다.', ephemeral: true });
         return;
     }

@@ -11,6 +11,7 @@ import {
   saveSummaryCheckpoint,
   saveReminderCheckpoint,
   getState,
+  isRegisteredTeamChannel,
 } from './services/channelMonitor'
 import { summarizeMessages } from './services/openai'
 
@@ -45,10 +46,11 @@ client.once(Events.ClientReady, async (c) => {
 // 메시지 수신 → 글자 수 누적 + 트리거 체크
 client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot) return
+  if (!(message.channel instanceof TextChannel)) return
 
-  const channel = message.channel as TextChannel
-  // /createrooms로 생성된 팀 채널(team{N}-day{M})에서만 요약 활성화
-  if (!/^team\d+-day\d+$/i.test(channel.name)) return
+  const channel = message.channel
+  // /createrooms로 DB에 등록된 팀 채널에서만 요약 활성화
+  if (!(await isRegisteredTeamChannel(channel.id))) return
 
   const charCount = message.content.length
   if (charCount === 0) return
