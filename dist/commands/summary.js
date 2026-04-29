@@ -19,8 +19,8 @@ async function executeSummary(interaction) {
         await interaction.reply({ content: '❌ 이 명령어는 팀 채널에서만 사용할 수 있습니다.', ephemeral: true });
         return;
     }
-    // /createrooms로 DB에 등록된 팀 채널인지 검증 (이름만으로는 우회 가능)
-    if (!(await (0, channelMonitor_1.isRegisteredTeamChannel)(channel.id))) {
+    // 1차 가드: Team-chat 카테고리 / 2차 가드: DB 등록 여부
+    if (channel.parent?.name !== 'Team-chat' || !(await (0, channelMonitor_1.isRegisteredTeamChannel)(channel.id))) {
         await interaction.reply({ content: '❌ 이 명령어는 팀 채널에서만 사용할 수 있습니다.', ephemeral: true });
         return;
     }

@@ -66,12 +66,15 @@ async function execute(interaction) {
                 id: guild.roles.everyone.id,
                 deny: [discord_js_1.PermissionFlagsBits.ViewChannel],
             },
-            // 번역봇 접근 허용
-            {
-                id: '1493800477941563565',
-                allow: [discord_js_1.PermissionFlagsBits.ViewChannel, discord_js_1.PermissionFlagsBits.SendMessages],
-            },
         ];
+        // 번역봇 접근 허용 (env에 설정된 경우만)
+        const translationBotId = process.env.TRANSLATION_BOT_ID;
+        if (translationBotId) {
+            permissionOverwrites.push({
+                id: translationBotId,
+                allow: [discord_js_1.PermissionFlagsBits.ViewChannel, discord_js_1.PermissionFlagsBits.SendMessages],
+            });
+        }
         for (const member of members) {
             if (member.discordUid) {
                 permissionOverwrites.push({
@@ -86,8 +89,11 @@ async function execute(interaction) {
             parent: category.id,
             permissionOverwrites,
         });
-        // 요약봇이 모니터링할 채널로 등록
-        await supabase_1.supabase.from('team_channel_summaries').upsert({ channel_id: newChannel.id }, { onConflict: 'channel_id' });
+        // 요약봇이 모니터링할 채널로 등록 (last_summary_at = 지금 → 첫 메시지 즉시 요약 방지)
+        await supabase_1.supabase.from('team_channel_summaries').upsert({
+            channel_id: newChannel.id,
+            last_summary_at: new Date().toISOString(),
+        }, { onConflict: 'channel_id' });
         created++;
     }
     const unmatched = [...teams.values()]

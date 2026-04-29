@@ -86,12 +86,16 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         id: guild.roles.everyone.id,
         deny: [PermissionFlagsBits.ViewChannel],
       },
-      // 번역봇 접근 허용
-      {
-        id: '1493800477941563565',
-        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
-      },
     ]
+
+    // 번역봇 접근 허용 (env에 설정된 경우만)
+    const translationBotId = process.env.TRANSLATION_BOT_ID
+    if (translationBotId) {
+      permissionOverwrites.push({
+        id: translationBotId,
+        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
+      })
+    }
 
     for (const member of members) {
       if (member.discordUid) {
@@ -109,9 +113,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       permissionOverwrites,
     })
 
-    // 요약봇이 모니터링할 채널로 등록
+    // 요약봇이 모니터링할 채널로 등록 (last_summary_at = 지금 → 첫 메시지 즉시 요약 방지)
     await supabase.from('team_channel_summaries').upsert(
-      { channel_id: newChannel.id },
+      {
+        channel_id: newChannel.id,
+        last_summary_at: new Date().toISOString(),
+      },
       { onConflict: 'channel_id' }
     )
 

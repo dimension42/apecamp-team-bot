@@ -4,12 +4,9 @@ import { executeSummary } from './commands/summary'
 import { execute as executeMission, handleMissionModal } from './commands/mission'
 import { restoreTimer } from './services/timer'
 import {
-  onMessage,
   checkSummaryTrigger,
-  checkReminderTrigger,
   fetchMessagesSince,
   saveSummaryCheckpoint,
-  saveReminderCheckpoint,
   getState,
   isRegisteredTeamChannel,
 } from './services/channelMonitor'
@@ -21,6 +18,7 @@ console.log('  DISCORD_CLIENT_ID:', process.env.DISCORD_CLIENT_ID ? '✅ set' : 
 console.log('  SUPABASE_URL:', process.env.SUPABASE_URL ? '✅ set' : '❌ missing')
 console.log('  SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? '✅ set' : '❌ missing')
 console.log('  OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? '✅ set' : '❌ missing')
+console.log('  TRANSLATION_BOT_ID:', process.env.TRANSLATION_BOT_ID ? '✅ set' : '⚠️ not set (skipped)')
 
 const token = process.env.DISCORD_BOT_TOKEN
 if (!token) {
@@ -43,21 +41,19 @@ client.once(Events.ClientReady, async (c) => {
   await restoreTimer(client)
 })
 
-// 메시지 수신 → 글자 수 누적 + 트리거 체크
+// 메시지 수신 → 15분 경과 시 자동 요약
 client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot) return
   if (!(message.channel instanceof TextChannel)) return
 
   const channel = message.channel
-  // /createrooms로 DB에 등록된 팀 채널에서만 요약 활성화
+  // 1차 가드: Team-chat 카테고리만 허용 (DB 오염 대비)
+  if (channel.parent?.name !== 'Team-chat') return
+  // 2차 가드: /createrooms로 DB에 등록된 팀 채널만 허용
   if (!(await isRegisteredTeamChannel(channel.id))) return
+  if (message.content.length === 0) return
 
-  const charCount = message.content.length
-  if (charCount === 0) return
-
-  await onMessage(channel.id, charCount)
-
-  // 자동 요약 체크 (AND 조건) — 요약이 트리거되면 리마인더는 건너뜀
+  // 마지막 요약 후 15분 이상 지났으면 자동 요약
   if (await checkSummaryTrigger(channel.id)) {
     const state = await getState(channel.id)
     const messages = await fetchMessagesSince(channel, state.lastSummaryMessageId)
@@ -69,10 +65,6 @@ client.on(Events.MessageCreate, async (message) => {
       if (latestId) await saveSummaryCheckpoint(channel.id, latestId)
       await channel.send(`📋 **Conversation Summary**\n\n${summary}`)
     }
-  // 리마인더 체크 (OR 조건) — 요약이 없을 때만
-  } else if (await checkReminderTrigger(channel.id)) {
-    await saveReminderCheckpoint(channel.id)
-    await channel.send('* Type /summary (or /요약) anytime to see a summary of previous conversations.')
   }
 })
 

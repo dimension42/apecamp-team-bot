@@ -13,6 +13,7 @@ console.log('  DISCORD_CLIENT_ID:', process.env.DISCORD_CLIENT_ID ? '✅ set' : 
 console.log('  SUPABASE_URL:', process.env.SUPABASE_URL ? '✅ set' : '❌ missing');
 console.log('  SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? '✅ set' : '❌ missing');
 console.log('  OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? '✅ set' : '❌ missing');
+console.log('  TRANSLATION_BOT_ID:', process.env.TRANSLATION_BOT_ID ? '✅ set' : '⚠️ not set (skipped)');
 const token = process.env.DISCORD_BOT_TOKEN;
 if (!token) {
     console.error('❌ DISCORD_BOT_TOKEN is not set');
@@ -31,21 +32,22 @@ client.once(discord_js_1.Events.ClientReady, async (c) => {
     // 재시작 시 진행 중인 타이머 복구
     await (0, timer_1.restoreTimer)(client);
 });
-// 메시지 수신 → 글자 수 누적 + 트리거 체크
+// 메시지 수신 → 15분 경과 시 자동 요약
 client.on(discord_js_1.Events.MessageCreate, async (message) => {
     if (message.author.bot)
         return;
     if (!(message.channel instanceof discord_js_1.TextChannel))
         return;
     const channel = message.channel;
-    // /createrooms로 DB에 등록된 팀 채널에서만 요약 활성화
+    // 1차 가드: Team-chat 카테고리만 허용 (DB 오염 대비)
+    if (channel.parent?.name !== 'Team-chat')
+        return;
+    // 2차 가드: /createrooms로 DB에 등록된 팀 채널만 허용
     if (!(await (0, channelMonitor_1.isRegisteredTeamChannel)(channel.id)))
         return;
-    const charCount = message.content.length;
-    if (charCount === 0)
+    if (message.content.length === 0)
         return;
-    await (0, channelMonitor_1.onMessage)(channel.id, charCount);
-    // 자동 요약 체크 (AND 조건) — 요약이 트리거되면 리마인더는 건너뜀
+    // 마지막 요약 후 15분 이상 지났으면 자동 요약
     if (await (0, channelMonitor_1.checkSummaryTrigger)(channel.id)) {
         const state = await (0, channelMonitor_1.getState)(channel.id);
         const messages = await (0, channelMonitor_1.fetchMessagesSince)(channel, state.lastSummaryMessageId);
@@ -57,11 +59,6 @@ client.on(discord_js_1.Events.MessageCreate, async (message) => {
                 await (0, channelMonitor_1.saveSummaryCheckpoint)(channel.id, latestId);
             await channel.send(`📋 **Conversation Summary**\n\n${summary}`);
         }
-        // 리마인더 체크 (OR 조건) — 요약이 없을 때만
-    }
-    else if (await (0, channelMonitor_1.checkReminderTrigger)(channel.id)) {
-        await (0, channelMonitor_1.saveReminderCheckpoint)(channel.id);
-        await channel.send('* Type /summary (or /요약) anytime to see a summary of previous conversations.');
     }
 });
 // 슬래시 커맨드 + 모달 처리

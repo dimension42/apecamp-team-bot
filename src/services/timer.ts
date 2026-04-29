@@ -46,7 +46,10 @@ async function getTeamChannels(client: Client): Promise<TextChannel[]> {
   for (const row of data) {
     try {
       const ch = await client.channels.fetch(row.channel_id)
-      if (ch instanceof TextChannel) channels.push(ch)
+      // Team-chat 카테고리 채널만 대상 (DB 오염 대비)
+      if (ch instanceof TextChannel && ch.parent?.name === 'Team-chat') {
+        channels.push(ch)
+      }
     } catch {
       // 채널이 삭제됐을 경우 무시
     }
