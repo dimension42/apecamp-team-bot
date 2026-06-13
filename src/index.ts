@@ -41,6 +41,9 @@ client.once(Events.ClientReady, async (c) => {
   await restoreTimer(client)
 })
 
+// 채널별 요약 진행 중 락 (checkpoint 저장 전 중복 요약 방지)
+const summarizingChannels = new Set<string>()
+
 // 메시지 수신 → 15분 경과 시 자동 요약
 client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot) return
@@ -53,8 +56,14 @@ client.on(Events.MessageCreate, async (message) => {
   if (!(await isRegisteredTeamChannel(channel.id))) return
   if (message.content.length === 0) return
 
+  // 이미 이 채널 요약이 진행 중이면 스킵 (15분 경과 후 연속 메시지로 인한 동시 요약 방지)
+  if (summarizingChannels.has(channel.id)) return
+
   // 마지막 요약 후 15분 이상 지났으면 자동 요약
-  if (await checkSummaryTrigger(channel.id)) {
+  if (!(await checkSummaryTrigger(channel.id))) return
+
+  summarizingChannels.add(channel.id)
+  try {
     const state = await getState(channel.id)
     const messages = await fetchMessagesSince(channel, state.lastSummaryMessageId)
 
@@ -65,6 +74,11 @@ client.on(Events.MessageCreate, async (message) => {
       if (latestId) await saveSummaryCheckpoint(channel.id, latestId)
       await channel.send(`📋 **Conversation Summary**\n\n${summary}`)
     }
+  } catch (err: any) {
+    // Supabase / OpenAI / Discord 전송 실패가 봇 전체를 죽이지 않도록 격리
+    console.error(`❌ 자동 요약 실패 (channel ${channel.id}):`, err?.message ?? err)
+  } finally {
+    summarizingChannels.delete(channel.id)
   }
 })
 
