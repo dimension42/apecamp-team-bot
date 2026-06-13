@@ -56,7 +56,12 @@ async function getTeamChannels(client) {
 }
 async function sendToAllTeams(client, message) {
     const channels = await getTeamChannels(client);
-    await Promise.all(channels.map((ch) => ch.send(message)));
+    // allSettled: 한 채널 전송 실패(권한/rate limit)가 나머지 공지와 타이머 등록을 막지 않도록 격리
+    const results = await Promise.allSettled(channels.map((ch) => ch.send(message)));
+    const failures = results.filter((r) => r.status === 'rejected').length;
+    if (failures > 0) {
+        console.error(`⚠️ 팀 공지 일부 실패: ${failures}/${channels.length}개 채널 전송 실패`);
+    }
 }
 function cancelAllTimers() {
     for (const t of activeTimeouts)
