@@ -26,12 +26,14 @@ async function execute(interaction) {
         return;
     }
     // DB에서 팀 배정 + 프로필 + 디스코드 UID 조회
+    // discord_uid는 profiles에서 직접 읽는다. (홈페이지 Discord OAuth 콜백이
+    // profiles.discord_uid에 검증된 UID를 기록함.) team_assignments↔discord_members
+    // 사이에는 직접 FK가 없어 sibling embed가 PostgREST에서 깨질 수 있으므로 사용하지 않음.
     const { data: assignments, error } = await supabase_1.supabase
         .from('team_assignments')
         .select(`
       team_number,
-      profiles!inner(activity_name, real_name, user_id),
-      discord_members!left(discord_uid)
+      profiles!inner(activity_name, real_name, user_id, discord_uid)
     `)
         .eq('run_id', runId)
         .order('team_number');
@@ -39,19 +41,23 @@ async function execute(interaction) {
         await interaction.editReply(`❌ 팀 데이터를 불러오지 못했습니다. run_id를 확인해주세요.\n\`${error?.message ?? '결과 없음'}\``);
         return;
     }
+    // 유효한 Discord snowflake(17~20자리 숫자)만 권한 부여에 사용
+    const isValidSnowflake = (id) => typeof id === 'string' && /^\d{17,20}$/.test(id);
     // 팀별로 그룹핑
     const teams = new Map();
     for (const row of assignments) {
         const teamNum = row.team_number;
         if (!teams.has(teamNum))
             teams.set(teamNum, []);
+        const rawUid = row.profiles?.discord_uid ?? null;
         teams.get(teamNum).push({
             activityName: row.profiles?.activity_name ?? row.profiles?.real_name ?? '알수없음',
-            discordUid: row.discord_members?.discord_uid ?? null,
+            discordUid: isValidSnowflake(rawUid) ? rawUid : null,
         });
     }
     let created = 0;
     let skipped = 0;
+    const failed = [];
     for (const [teamNum, members] of teams) {
         const channelName = `team${teamNum}-${day.toLowerCase()}`;
         // 이미 존재하는 채널 스킵
@@ -60,47 +66,58 @@ async function execute(interaction) {
             skipped++;
             continue;
         }
-        // 채널에 접근 허용할 멤버 권한 설정
-        const permissionOverwrites = [
-            {
-                id: guild.roles.everyone.id,
-                deny: [discord_js_1.PermissionFlagsBits.ViewChannel],
-            },
-        ];
-        // 번역봇 접근 허용 (env에 설정된 경우만)
-        const translationBotId = process.env.TRANSLATION_BOT_ID;
-        if (translationBotId) {
-            permissionOverwrites.push({
-                id: translationBotId,
-                allow: [discord_js_1.PermissionFlagsBits.ViewChannel, discord_js_1.PermissionFlagsBits.SendMessages],
-            });
-        }
-        for (const member of members) {
-            if (member.discordUid) {
+        // 팀 단위로 격리: 한 팀의 채널 생성이 실패해도 나머지 팀은 계속 진행
+        try {
+            // 채널에 접근 허용할 멤버 권한 설정
+            const permissionOverwrites = [
+                {
+                    id: guild.roles.everyone.id,
+                    deny: [discord_js_1.PermissionFlagsBits.ViewChannel],
+                },
+            ];
+            // 번역봇 접근 허용 (env에 설정된 경우만)
+            const translationBotId = process.env.TRANSLATION_BOT_ID;
+            if (translationBotId) {
                 permissionOverwrites.push({
-                    id: member.discordUid,
+                    id: translationBotId,
                     allow: [discord_js_1.PermissionFlagsBits.ViewChannel, discord_js_1.PermissionFlagsBits.SendMessages],
                 });
             }
+            for (const member of members) {
+                // discordUid는 위에서 snowflake 형식 검증을 통과한 값만 non-null
+                if (member.discordUid) {
+                    permissionOverwrites.push({
+                        id: member.discordUid,
+                        allow: [discord_js_1.PermissionFlagsBits.ViewChannel, discord_js_1.PermissionFlagsBits.SendMessages],
+                    });
+                }
+            }
+            const newChannel = await guild.channels.create({
+                name: channelName,
+                type: discord_js_1.ChannelType.GuildText,
+                parent: category.id,
+                permissionOverwrites,
+            });
+            // 요약봇이 모니터링할 채널로 등록 (last_summary_at = 지금 → 첫 메시지 즉시 요약 방지)
+            await supabase_1.supabase.from('team_channel_summaries').upsert({
+                channel_id: newChannel.id,
+                last_summary_at: new Date().toISOString(),
+            }, { onConflict: 'channel_id' });
+            created++;
         }
-        const newChannel = await guild.channels.create({
-            name: channelName,
-            type: discord_js_1.ChannelType.GuildText,
-            parent: category.id,
-            permissionOverwrites,
-        });
-        // 요약봇이 모니터링할 채널로 등록 (last_summary_at = 지금 → 첫 메시지 즉시 요약 방지)
-        await supabase_1.supabase.from('team_channel_summaries').upsert({
-            channel_id: newChannel.id,
-            last_summary_at: new Date().toISOString(),
-        }, { onConflict: 'channel_id' });
-        created++;
+        catch (err) {
+            console.error(`❌ team${teamNum} 채널 생성 실패:`, err?.message ?? err);
+            failed.push(teamNum);
+        }
     }
     const unmatched = [...teams.values()]
         .flat()
         .filter((m) => !m.discordUid)
         .map((m) => m.activityName);
     let reply = `✅ 채널 생성 완료!\n- 생성됨: ${created}개\n- 스킵(이미 존재): ${skipped}개`;
+    if (failed.length > 0) {
+        reply += `\n- ❌ 실패: ${failed.length}개 (team ${failed.join(', ')}) — 로그 확인 필요`;
+    }
     if (unmatched.length > 0) {
         reply += `\n\n⚠️ 디스코드 미연동 참가자 (채널에 추가 안 됨):\n${unmatched.join(', ')}`;
     }

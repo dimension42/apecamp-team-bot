@@ -4,6 +4,9 @@ exports.data = void 0;
 exports.execute = execute;
 const discord_js_1 = require("discord.js");
 const supabase_1 = require("../supabase");
+// 현재 서버 멤버 UID를 일괄로 discord_members에 등록(방장 전용).
+// 주의: 현재 deploy-commands.ts / index.ts에 등록되어 있지 않음(미배선).
+// 활성화하려면 deploy-commands에 data를 추가하고 index.ts InteractionCreate에서 라우팅할 것.
 exports.data = new discord_js_1.SlashCommandBuilder()
     .setName('syncmembers')
     .setDescription('현재 서버 멤버 UID를 전부 DB에 등록합니다 (방장 전용)');

@@ -7,8 +7,15 @@ const discord_js_1 = require("discord.js");
 const timer_1 = require("../services/timer");
 exports.data = new discord_js_1.SlashCommandBuilder()
     .setName('mission')
-    .setDescription('미션 종료 타이머를 설정합니다 (관리자 전용)');
+    .setDescription('미션 종료 타이머를 설정합니다 (관리자 전용)')
+    // 길드 권한 게이트: ManageGuild 권한이 없는 멤버에게는 명령어 자체가 보이지 않음
+    .setDefaultMemberPermissions(discord_js_1.PermissionFlagsBits.ManageGuild);
 async function execute(interaction) {
+    // 방장(서버 소유자)만 실행 가능 — createrooms와 동일한 가드
+    if (interaction.user.id !== interaction.guild?.ownerId) {
+        await interaction.reply({ content: '❌ 방장만 사용할 수 있는 명령어입니다.', ephemeral: true });
+        return;
+    }
     const modal = new discord_js_1.ModalBuilder()
         .setCustomId('missionTimerModal')
         .setTitle('🎯 미션 종료 타이머 설정');
