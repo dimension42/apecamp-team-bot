@@ -9,7 +9,9 @@ import {
   saveSummaryCheckpoint,
   getState,
   isRegisteredTeamChannel,
+  isSummaryEnabled,
 } from './services/channelMonitor'
+import { executeSummaryToggle } from './commands/summaryToggle'
 import { summarizeMessages } from './services/openai'
 
 console.log('🔍 ENV CHECK:')
@@ -54,6 +56,8 @@ client.on(Events.MessageCreate, async (message) => {
   if (channel.parent?.name !== 'Team-chat') return
   // 2차 가드: /createrooms로 DB에 등록된 팀 채널만 허용
   if (!(await isRegisteredTeamChannel(channel.id))) return
+  // 3차 가드: /요약끄기로 자동 요약을 끈 채널은 건너뜀 (getState 캐시 재사용, 추가 쿼리 없음)
+  if (!(await isSummaryEnabled(channel.id))) return
   if (message.content.length === 0) return
 
   // 이미 이 채널 요약이 진행 중이면 스킵 (15분 경과 후 연속 메시지로 인한 동시 요약 방지)
@@ -88,6 +92,10 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
   if (interaction.isChatInputCommand()) {
     if (interaction.commandName === 'createrooms') await executeCreateRooms(interaction)
     if (interaction.commandName === 'summary' || interaction.commandName === '요약') await executeSummary(interaction)
+    if (interaction.commandName === 'summary-off' || interaction.commandName === '요약끄기')
+      await executeSummaryToggle(interaction, false)
+    if (interaction.commandName === 'summary-on' || interaction.commandName === '요약켜기')
+      await executeSummaryToggle(interaction, true)
     if (interaction.commandName === 'mission') await executeMission(interaction)
   }
 

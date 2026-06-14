@@ -6,6 +6,7 @@ const summary_1 = require("./commands/summary");
 const mission_1 = require("./commands/mission");
 const timer_1 = require("./services/timer");
 const channelMonitor_1 = require("./services/channelMonitor");
+const summaryToggle_1 = require("./commands/summaryToggle");
 const openai_1 = require("./services/openai");
 console.log('🔍 ENV CHECK:');
 console.log('  DISCORD_BOT_TOKEN:', process.env.DISCORD_BOT_TOKEN ? '✅ set' : '❌ missing');
@@ -47,6 +48,9 @@ client.on(discord_js_1.Events.MessageCreate, async (message) => {
     // 2차 가드: /createrooms로 DB에 등록된 팀 채널만 허용
     if (!(await (0, channelMonitor_1.isRegisteredTeamChannel)(channel.id)))
         return;
+    // 3차 가드: /요약끄기로 자동 요약을 끈 채널은 건너뜀 (getState 캐시 재사용, 추가 쿼리 없음)
+    if (!(await (0, channelMonitor_1.isSummaryEnabled)(channel.id)))
+        return;
     if (message.content.length === 0)
         return;
     // 이미 이 채널 요약이 진행 중이면 스킵 (15분 경과 후 연속 메시지로 인한 동시 요약 방지)
@@ -84,6 +88,10 @@ client.on(discord_js_1.Events.InteractionCreate, async (interaction) => {
             await (0, createrooms_1.execute)(interaction);
         if (interaction.commandName === 'summary' || interaction.commandName === '요약')
             await (0, summary_1.executeSummary)(interaction);
+        if (interaction.commandName === 'summary-off' || interaction.commandName === '요약끄기')
+            await (0, summaryToggle_1.executeSummaryToggle)(interaction, false);
+        if (interaction.commandName === 'summary-on' || interaction.commandName === '요약켜기')
+            await (0, summaryToggle_1.executeSummaryToggle)(interaction, true);
         if (interaction.commandName === 'mission')
             await (0, mission_1.execute)(interaction);
     }

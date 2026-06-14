@@ -6,6 +6,8 @@ const SUMMARY_INTERVAL_MS = 15 * 60 * 1000  // 15분마다 자동 요약
 interface ChannelState {
   lastSummaryAt: number
   lastSummaryMessageId: string | null
+  // summary_enabled 컬럼 반영. false면 자동 요약을 건너뛴다. NULL/미설정은 기본 켜짐(true).
+  enabled: boolean
   initialized: boolean
 }
 
@@ -32,11 +34,33 @@ async function initState(channelId: string): Promise<ChannelState> {
   const state: ChannelState = {
     lastSummaryAt: data?.last_summary_at ? new Date(data.last_summary_at).getTime() : Date.now(),
     lastSummaryMessageId: data?.last_summary_message_id ?? null,
+    enabled: data?.summary_enabled ?? true,
     initialized: true,
   }
 
   states.set(channelId, state)
   return state
+}
+
+// 이 채널의 자동 요약이 켜져 있는지 (기본값 true). getState 캐시를 재사용해 추가 쿼리 없음.
+export async function isSummaryEnabled(channelId: string): Promise<boolean> {
+  const state = await getState(channelId)
+  return state.enabled
+}
+
+// /요약끄기·/요약켜기에서 호출. DB와 인메모리 캐시를 함께 갱신한다.
+export async function setSummaryEnabled(channelId: string, enabled: boolean) {
+  await supabase.from('team_channel_summaries').upsert(
+    {
+      channel_id: channelId,
+      summary_enabled: enabled,
+    },
+    { onConflict: 'channel_id' }
+  )
+
+  // 캐시가 있으면 즉시 반영(다음 메시지부터 효과). 없으면 다음 getState가 DB에서 새 값을 읽는다.
+  const cached = states.get(channelId)
+  if (cached) cached.enabled = enabled
 }
 
 export async function getState(channelId: string): Promise<ChannelState> {

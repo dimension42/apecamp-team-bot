@@ -1,6 +1,12 @@
 import { REST, Routes } from 'discord.js'
 import { data as createRoomsData } from './commands/createrooms'
 import { summaryData, yoyakData } from './commands/summary'
+import {
+  summaryOffData,
+  yoyakOffData,
+  summaryOnData,
+  yoyakOnData,
+} from './commands/summaryToggle'
 import { data as missionData } from './commands/mission'
 
 const token = process.env.DISCORD_BOT_TOKEN
@@ -24,17 +30,21 @@ const rest = new REST().setToken(token)
     createRoomsData.toJSON(),
     summaryData.toJSON(),
     yoyakData.toJSON(),
+    summaryOffData.toJSON(),
+    yoyakOffData.toJSON(),
+    summaryOnData.toJSON(),
+    yoyakOnData.toJSON(),
     missionData.toJSON(),
   ]
 
   if (guildId) {
     console.log(`슬래시 커맨드 등록 중... (길드 ${guildId} — 즉시 반영)`)
     await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body })
-    console.log('✅ /createrooms, /summary, /요약, /mission 길드 커맨드 등록 완료! (즉시 사용 가능)')
+    console.log('✅ /createrooms, /summary, /요약, /요약끄기, /요약켜기, /mission 길드 커맨드 등록 완료! (즉시 사용 가능)')
   } else {
     console.log('슬래시 커맨드 등록 중... (글로벌 — 전파에 최대 1시간 소요)')
     await rest.put(Routes.applicationCommands(clientId), { body })
-    console.log('✅ /createrooms, /summary, /요약, /mission 글로벌 커맨드 등록 완료! (전파 최대 1시간)')
+    console.log('✅ /createrooms, /summary, /요약, /요약끄기, /요약켜기, /mission 글로벌 커맨드 등록 완료! (전파 최대 1시간)')
     console.log('   ⏱️ 즉시 반영하려면 DISCORD_GUILD_ID 환경변수를 설정하고 다시 실행하세요.')
   }
 })().catch((e) => {

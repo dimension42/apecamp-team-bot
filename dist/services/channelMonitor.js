@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.isRegisteredTeamChannel = isRegisteredTeamChannel;
+exports.isSummaryEnabled = isSummaryEnabled;
+exports.setSummaryEnabled = setSummaryEnabled;
 exports.getState = getState;
 exports.checkSummaryTrigger = checkSummaryTrigger;
 exports.saveSummaryCheckpoint = saveSummaryCheckpoint;
@@ -27,10 +29,27 @@ async function initState(channelId) {
     const state = {
         lastSummaryAt: data?.last_summary_at ? new Date(data.last_summary_at).getTime() : Date.now(),
         lastSummaryMessageId: data?.last_summary_message_id ?? null,
+        enabled: data?.summary_enabled ?? true,
         initialized: true,
     };
     states.set(channelId, state);
     return state;
+}
+// 이 채널의 자동 요약이 켜져 있는지 (기본값 true). getState 캐시를 재사용해 추가 쿼리 없음.
+async function isSummaryEnabled(channelId) {
+    const state = await getState(channelId);
+    return state.enabled;
+}
+// /요약끄기·/요약켜기에서 호출. DB와 인메모리 캐시를 함께 갱신한다.
+async function setSummaryEnabled(channelId, enabled) {
+    await supabase_1.supabase.from('team_channel_summaries').upsert({
+        channel_id: channelId,
+        summary_enabled: enabled,
+    }, { onConflict: 'channel_id' });
+    // 캐시가 있으면 즉시 반영(다음 메시지부터 효과). 없으면 다음 getState가 DB에서 새 값을 읽는다.
+    const cached = states.get(channelId);
+    if (cached)
+        cached.enabled = enabled;
 }
 async function getState(channelId) {
     const existing = states.get(channelId);
