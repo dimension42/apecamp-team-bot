@@ -1,7 +1,7 @@
 import { TextChannel, Message as DiscordMessage, Collection } from 'discord.js'
 import { supabase } from '../supabase'
 
-const SUMMARY_INTERVAL_MS = 15 * 60 * 1000  // 15분마다 자동 요약
+const SUMMARY_INTERVAL_MS = 30 * 60 * 1000  // 30분마다 자동 요약
 
 interface ChannelState {
   lastSummaryAt: number

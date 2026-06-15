@@ -8,7 +8,7 @@ exports.checkSummaryTrigger = checkSummaryTrigger;
 exports.saveSummaryCheckpoint = saveSummaryCheckpoint;
 exports.fetchMessagesSince = fetchMessagesSince;
 const supabase_1 = require("../supabase");
-const SUMMARY_INTERVAL_MS = 15 * 60 * 1000; // 15분마다 자동 요약
+const SUMMARY_INTERVAL_MS = 30 * 60 * 1000; // 30분마다 자동 요약
 const states = new Map();
 // /createrooms로 등록된 팀 채널인지 DB로 검증
 async function isRegisteredTeamChannel(channelId) {
