@@ -35,6 +35,8 @@ Keep each section concise and focused on substance, not filler.`,
                 content: formatted,
             },
         ],
+        // 요약 길이 상한 — 메시지 분할 수와 비용을 억제 (대략 1~2개 메시지 분량)
+        max_tokens: 700,
     });
     return response.choices[0].message.content ?? '(No summary generated)';
 }

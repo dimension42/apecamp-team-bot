@@ -8,6 +8,7 @@ const timer_1 = require("./services/timer");
 const channelMonitor_1 = require("./services/channelMonitor");
 const summaryToggle_1 = require("./commands/summaryToggle");
 const openai_1 = require("./services/openai");
+const sendLong_1 = require("./utils/sendLong");
 console.log('🔍 ENV CHECK:');
 console.log('  DISCORD_BOT_TOKEN:', process.env.DISCORD_BOT_TOKEN ? '✅ set' : '❌ missing');
 console.log('  DISCORD_CLIENT_ID:', process.env.DISCORD_CLIENT_ID ? '✅ set' : '❌ missing');
@@ -69,7 +70,7 @@ client.on(discord_js_1.Events.MessageCreate, async (message) => {
             const latestId = latestFetched.first()?.id;
             if (latestId)
                 await (0, channelMonitor_1.saveSummaryCheckpoint)(channel.id, latestId);
-            await channel.send(`📋 **Conversation Summary**\n\n${summary}`);
+            await (0, sendLong_1.sendLongMessage)(channel, `📋 **Conversation Summary**\n\n${summary}`);
         }
     }
     catch (err) {

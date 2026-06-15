@@ -6,6 +6,7 @@ import {
   getState,
   isRegisteredTeamChannel,
 } from '../services/channelMonitor'
+import { sendLongMessage } from '../utils/sendLong'
 
 export const summaryData = new SlashCommandBuilder()
   .setName('summary')
@@ -51,6 +52,7 @@ export async function executeSummary(interaction: ChatInputCommandInteraction) {
   }
 
   // channel.send()으로 보내야 번역봇이 MessageCreate 이벤트를 잡을 수 있음
+  // 2000자 초과 시 분할 전송 (Discord 메시지 길이 제한)
   await interaction.deleteReply()
-  await channel.send(`📋 **Conversation Summary**\n\n${summary}`)
+  await sendLongMessage(channel, `📋 **Conversation Summary**\n\n${summary}`)
 }

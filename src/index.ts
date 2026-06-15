@@ -13,6 +13,7 @@ import {
 } from './services/channelMonitor'
 import { executeSummaryToggle } from './commands/summaryToggle'
 import { summarizeMessages } from './services/openai'
+import { sendLongMessage } from './utils/sendLong'
 
 console.log('🔍 ENV CHECK:')
 console.log('  DISCORD_BOT_TOKEN:', process.env.DISCORD_BOT_TOKEN ? '✅ set' : '❌ missing')
@@ -76,7 +77,7 @@ client.on(Events.MessageCreate, async (message) => {
       const latestFetched = await channel.messages.fetch({ limit: 1 })
       const latestId = latestFetched.first()?.id
       if (latestId) await saveSummaryCheckpoint(channel.id, latestId)
-      await channel.send(`📋 **Conversation Summary**\n\n${summary}`)
+      await sendLongMessage(channel, `📋 **Conversation Summary**\n\n${summary}`)
     }
   } catch (err: any) {
     // Supabase / OpenAI / Discord 전송 실패가 봇 전체를 죽이지 않도록 격리
